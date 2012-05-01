@@ -406,6 +406,17 @@ RABBITMQ_EXPORT void amqp_default_connection_info(
 RABBITMQ_EXPORT int amqp_parse_url(char *url,
 				   struct amqp_connection_info *parsed);
 
+#ifdef WITH_OPENSSL
+#define AMQP_SSL_NO_AUTHENTICATION              0x00    /* for testing purposes */
+#define AMQP_SSL_REQUIRE_SERVER_AUTHENTICATION  0x01    /* client requires server to authenticate */
+#define AMQP_SSL_SKIP_HOST_CHECK                0x02    /* client does not check the common name of the host in certificate */
+
+RABBITMQ_EXPORT void amqp_ssl_init();
+RABBITMQ_EXPORT int amqp_ssl_context(amqp_connection_state_t conn, unsigned short flags, const char *keyfile, const char *password, const char *cafile);
+RABBITMQ_EXPORT int amqp_ssl_connect(amqp_connection_state_t conn, const char *host, int port);
+RABBITMQ_EXPORT char *amqp_ssl_error(amqp_connection_state_t conn);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

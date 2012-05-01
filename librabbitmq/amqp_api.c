@@ -240,3 +240,464 @@ int amqp_basic_reject(amqp_connection_state_t state,
   req.requeue = requeue;
   return amqp_send_method(state, channel, AMQP_BASIC_REJECT_METHOD, &req);
 }
+
+
+/* ------------------------------------------------------------------------------------------------------------------------------------ */
+
+#ifdef WITH_OPENSSL
+#include <signal.h>
+#include <limits.h>
+
+#ifndef MIN
+#define MIN(a,b) (((a) < (b)) ? (a) : (b))
+#endif
+
+#ifndef SSIZE_MAX
+#define SSIZE_MAX ((ssize_t) (SIZE_MAX / 2))
+#endif
+
+
+static int amqp_ssl_set_error(amqp_connection_state_t state, int err, const char *str);
+
+static int amqp_ssl_init_done = 0;
+
+
+
+void amqp_ssl_init()
+
+{
+
+	char 				buffer[1024];
+
+	int 				val;
+
+
+  	if (! amqp_ssl_init_done)
+  	{
+	   amqp_ssl_init_done = 1;
+
+    	   SSL_library_init(); OpenSSL_add_all_algorithms(); SSL_load_error_strings();
+
+    	   if (! RAND_load_file("/dev/urandom", 1024))
+    	   {
+      	      RAND_seed(buffer, sizeof(buffer));
+
+      	      while (! RAND_status())
+      	      {
+	         val = rand();
+        	 RAND_seed(&val, sizeof(val));
+      	      }
+    	   }
+  	}
+
+}
+
+/* ------------------------------------------------------------------------------------------------------------------------------------ */
+
+static void sp_handler(int val)
+
+{
+	/* Does nothing... just exists */
+}
+
+/* ------------------------------------------------------------------------------------------------------------------------------------ */
+
+static int password_cb(char *buf, int num, int rwflag, void *ud)
+
+{
+
+	if (num < strlen((char *) ud) + 1)
+    	{
+	   return 0;
+	}
+
+
+	return (strlen(strcpy(buf, (char *) ud)));
+
+}
+
+/* ------------------------------------------------------------------------------------------------------------------------------------ */
+
+char *amqp_ssl_error(amqp_connection_state_t state)
+
+{
+
+	return (state->errstr);
+
+}
+
+/* ------------------------------------------------------------------------------------------------------------------------------------ */
+
+int amqp_ssl_connect(amqp_connection_state_t state, const char *host, int port)
+
+{
+
+	int 				sockfd;
+
+	int 				rv;
+
+	char 				name[256];
+
+
+	sockfd = amqp_open_socket(host, port);
+  	amqp_set_sockfd(state, sockfd);
+
+
+    	state->ssl = SSL_new(state->ctx);
+    	state->bio = BIO_new_socket(state->sockfd, BIO_NOCLOSE);
+	SSL_set_bio(state->ssl, state->bio, state->bio);
+
+	if ((rv = SSL_connect(state->ssl)) <= 0)
+	{
+	   return (amqp_ssl_set_error(state, SSL_get_error(state->ssl, rv), "SSL_connect()"));
+	}
+
+
+	if ((state->ssl_flags & AMQP_SSL_REQUIRE_SERVER_AUTHENTICATION))
+	{
+       	   if (SSL_get_verify_result(state->ssl) != X509_V_OK)
+      	   {
+	      return (amqp_ssl_set_error(state, -1, "SSL certificate presented by peer cannot be verified"));
+	   }
+
+
+ 	   if (! (state->ssl_flags & AMQP_SSL_SKIP_HOST_CHECK))
+	   {
+	      X509 *peer;
+
+	      if (! (peer = SSL_get_peer_certificate(state->ssl)))
+	      {
+	         return (amqp_ssl_set_error(state, -1, "No SSL certificate was presented by peer"));
+	      }
+
+	      /* This could be done better, but will suffice for now */
+
+    	      X509_NAME_get_text_by_NID(X509_get_subject_name(peer), NID_commonName, name, sizeof(name));
+
+	      X509_free(peer);
+
+	      if (strcasecmp(name, host))
+	      {
+	         return (amqp_ssl_set_error(state, -1, "Common name doesn't match host name"));
+	      }
+	   }
+	}
+
+
+#if 0 				/* Included for future reference (stick with blocking I/O for now) */
+	{
+	   in flags;
+#ifdef __VMS
+  	   flags = 1;
+  	   ioctl(state->sockfd, FIONBIO, &flags);
+#else
+  	   flags = fcntl(state->sockfd, F_GETFL, 0);
+  	   if (flags == -1)
+      	      flags = 0;
+  	   fcntl(state->sockfd, F_SETFL, flags | O_NONBLOCK);
+#endif
+	}
+#endif
+
+	return (0);
+
+}
+
+/* ------------------------------------------------------------------------------------------------------------------------------------ */
+
+int amqp_ssl_context(amqp_connection_state_t state, unsigned short flags, const char *keyfile, const char *password, const char *cafile)
+
+{
+
+	if (! amqp_ssl_init_done)
+	{
+	   amqp_ssl_init();
+	}
+
+   	signal(SIGPIPE, sp_handler);
+
+
+	state->ssl_flags = flags;
+
+	ERR_clear_error();
+
+    	if (! (state->ctx = SSL_CTX_new(SSLv23_method())))
+	{
+	   return (amqp_ssl_set_error(state, -1, "Can't set up SSL context"));
+	}
+
+
+    	if (! SSL_CTX_use_certificate_chain_file(state->ctx, keyfile))
+	{
+	   return (amqp_ssl_set_error(state, -1, "Can't read certificate key file"));
+	}
+
+
+    	if (password != NULL)
+    	{
+	   SSL_CTX_set_default_passwd_cb_userdata(state->ctx, (void *) strdup(password)); 	/* Allocates memory (only done once) */
+
+	   SSL_CTX_set_default_passwd_cb(state->ctx, password_cb);
+	}
+
+
+	if (! SSL_CTX_use_PrivateKey_file(state->ctx, keyfile, SSL_FILETYPE_PEM))
+      	{
+	   return (amqp_ssl_set_error(state, -1, "Can't read key file"));
+	}
+
+	if (cafile != NULL)
+	{
+    	   if (! SSL_CTX_load_verify_locations(state->ctx, cafile, 0))
+	   {
+	      return (amqp_ssl_set_error(state, -1, "Can't read CA file"));
+	   }
+	}
+
+#if (OPENSSL_VERSION_NUMBER < 0x00905100L)
+    	SSL_CTX_set_verify_depth(state->ctx, 1);
+#endif
+
+    	return (0);
+}
+
+/* ------------------------------------------------------------------------------------------------------------------------------------ */
+
+
+static int amqp_ssl_set_error(amqp_connection_state_t state, int err, const char *str)
+
+{
+
+	int 				tmp = errno;		/* Keep last errno  for possible future reference */
+
+	char * 				errstr;
+
+
+	/* Minimum SSL error code is 0; maximum is 8 (ssl.h) */
+
+	if (err == -1)
+	{
+	   if (tmp)
+	   {
+	      sprintf(state->errstr, "%s: %s", str, strerror(tmp));
+	   }
+	   else
+	   {
+	      strcpy(state->errstr, str);
+	   }
+	}
+	else
+	{
+    	   switch (err)
+	   {
+              case SSL_ERROR_NONE:
+                 errstr = "No error";
+                 break;
+
+              case SSL_ERROR_SSL:
+                 errstr = "Internal OpenSSL error or protocol error";
+                 break;
+
+              case SSL_ERROR_WANT_READ:
+                 errstr = "OpenSSL functions requested a read";
+                 break;
+
+              case SSL_ERROR_WANT_WRITE:
+                 errstr = "OpenSSL functions requested a write";
+                 break;
+
+              case SSL_ERROR_WANT_X509_LOOKUP:
+                 errstr = "OpenSSL requested a X509 lookup which didn't arrive";
+                 break;
+
+	      case SSL_ERROR_SYSCALL:				/* errno is likely to be relevant */
+                 errstr = "Underlying syscall error";
+                 break;
+
+              case SSL_ERROR_ZERO_RETURN:
+                 errstr = "Underlying socket operation returned zero";
+                 break;
+
+              case SSL_ERROR_WANT_CONNECT:
+                 errstr = "OpenSSL functions wanted a connect";
+                 break;
+
+              default:
+                 errstr = "Unknown OpenSSL error";
+	         break;
+    	   }
+
+	   if (tmp)
+	   {
+	      sprintf(state->errstr, "%s: %s (%s)", str, errstr, strerror(tmp));
+	   }
+	   else
+	   {
+	      sprintf(state->errstr, "%s: %s", str, errstr);
+	   }
+	}
+
+
+    	errno = tmp ? tmp : EIO; 				/* Go with a generic I/O error if nothing else */
+
+	return (-1);
+
+}
+
+/* ------------------------------------------------------------------------------------------------------------------------------------ */
+
+int amqp_ssl_recv(amqp_connection_state_t state, char *buf, size_t nb)
+
+{
+
+	int 				err;
+	int 				len;
+
+
+	len = SSL_read(state->ssl, buf, nb);
+
+    	if (! len)
+    	{
+           switch ((err = SSL_get_error(state->ssl, len)))
+           {
+              case SSL_ERROR_SYSCALL:
+                 if ((errno == EWOULDBLOCK) || (errno == EAGAIN) || (errno == EINTR))
+                 {
+                    case SSL_ERROR_WANT_READ:
+                       errno = EWOULDBLOCK;
+
+                    return (0);
+                 }
+
+              case SSL_ERROR_SSL:
+                 if (errno == EAGAIN)
+	         {
+                    return (0);
+	         }
+
+              default:
+                 return (amqp_ssl_set_error(state, err, "SSL_read()"));
+           }
+    	}
+
+
+    	return (len);
+}
+
+/* ------------------------------------------------------------------------------------------------------------------------------------ */
+
+int amqp_ssl_send(amqp_connection_state_t state, char *buf, size_t nb)
+
+{
+
+	int 				err;
+	int 				len;
+
+
+	len = SSL_write(state->ssl, buf, nb);
+
+    	if (! len)
+    	{
+           switch ((err = SSL_get_error(state->ssl, len)))
+           {
+              case SSL_ERROR_SYSCALL:
+                 if (errno == EWOULDBLOCK || errno == EAGAIN || errno == EINTR)
+                 {
+                    case SSL_ERROR_WANT_WRITE:
+                    case SSL_ERROR_WANT_READ:
+                        errno = EWOULDBLOCK;
+
+                    return (0);
+                }
+
+             case SSL_ERROR_SSL:
+                if (errno == EAGAIN)
+	        {
+                    return (0);
+	        }
+
+             default:
+                return (amqp_ssl_set_error(state, err, "SSL_write()"));
+           }
+    	}
+
+
+	return (len);
+
+}
+
+/* ------------------------------------------------------------------------------------------------------------------------------------ */
+
+#ifdef __VMS
+static void *mempcpy(void *dst, const void *src, size_t len)
+
+{
+
+  	return ((char *) memcpy(dst, src, len) + len);
+
+}
+#endif
+
+int amqp_ssl_writev(amqp_connection_state_t state, const struct iovec *vec, int num)
+
+{
+
+	char *				buffer;
+
+	char *				bp;
+
+	int 				total;
+	int 				chunk;
+
+	int 				n;
+	int 				i;
+
+
+	total = 0;
+
+    	for (i = 0; i < num; i++)
+	{
+           if ((SSIZE_MAX - total) < vec[i].iov_len)
+	   {
+              return (-1);
+           }
+
+           total += vec[i].iov_len;
+    	}
+
+
+    	if ((buffer = (char *) malloc(total * sizeof(char))) == NULL)
+	{
+	   sprintf(state->errstr, "malloc(): %s [%s, %d]", strerror(errno), __FILE__, __LINE__);
+
+	   return (-1);
+	}
+
+
+    	n = total; bp = buffer;
+
+    	for (i = 0; i < num; i++)
+    	{
+      	   chunk = MIN(vec[i].iov_len, n); bp = mempcpy (bp, vec[i].iov_base, chunk);
+
+           n -= chunk;
+
+	   if (n == 0)
+	   {
+    	      break;
+	   }
+    	}
+
+
+	n = amqp_ssl_send(state, buffer, total);
+
+    	free(buffer);
+
+    	return (n);
+
+}
+
+#endif
+
+
+

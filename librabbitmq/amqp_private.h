@@ -33,7 +33,23 @@
  * ***** END LICENSE BLOCK *****
  */
 
+#if defined(__VMS) && defined(WITH_OPENSSL)
+#ifndef IFNAMSIZ
+#define IFNAMSIZ 16
+#endif
+#endif
+
 #include "config.h"
+
+#ifdef WITH_OPENSSL		/* BRC */
+#include <fcntl.h>
+#include <openssl/bio.h>
+#include <openssl/err.h>
+#include <openssl/rand.h>
+#include <openssl/ssl.h>
+#include <openssl/x509v3.h>
+#endif
+
 
 /* Error numbering: Because of differences in error numbering on
  * different platforms, we want to keep error numbers opaque for
@@ -126,6 +142,14 @@ struct amqp_connection_state_t_ {
   amqp_link_t *last_queued_frame;
 
   amqp_rpc_reply_t most_recent_api_result;
+
+#ifdef WITH_OPENSSL
+  unsigned short ssl_flags;
+  SSL *ssl;
+  BIO *bio;
+  SSL_CTX *ctx;
+  char errstr[256];
+#endif
 };
 
 static inline void *amqp_offset(void *data, size_t offset)
@@ -254,5 +278,11 @@ static inline int amqp_decode_bytes(amqp_bytes_t encoded, size_t *offset,
 }
 
 extern void amqp_abort(const char *fmt, ...);
+
+#ifdef WITH_OPENSSL
+extern int amqp_ssl_send(amqp_connection_state_t conn, char *data, size_t len);
+extern int amqp_ssl_recv(amqp_connection_state_t conn, char *data, size_t len);
+extern int amqp_ssl_writev(amqp_connection_state_t conn, const struct iovec *vector, int count);
+#endif
 
 #endif

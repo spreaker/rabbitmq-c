@@ -83,7 +83,11 @@ int amqp_send_header(amqp_connection_state_t state) {
 				     AMQP_PROTOCOL_VERSION_MAJOR,
 				     AMQP_PROTOCOL_VERSION_MINOR,
 				     AMQP_PROTOCOL_VERSION_REVISION };
+#ifdef WITH_OPENSSL
+  return amqp_ssl_send(state, (void *) header, 8);
+#else
   return send(state->sockfd, (void *)header, 8, 0);
+#endif
 }
 
 static amqp_bytes_t sasl_method_name(amqp_sasl_method_enum method) {
@@ -173,8 +177,13 @@ static int wait_frame_inner(amqp_connection_state_t state,
       assert(res != 0);
     }
 
+#ifdef WITH_OPENSSL
+    res = amqp_ssl_recv(state, state->sock_inbound_buffer.bytes, state->sock_inbound_buffer.len);
+#else
     res = recv(state->sockfd, state->sock_inbound_buffer.bytes,
 		  state->sock_inbound_buffer.len, 0);
+#endif
+
     if (res <= 0) {
       if (res == 0)
 	return -ERROR_CONNECTION_CLOSED;

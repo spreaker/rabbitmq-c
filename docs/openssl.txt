@@ -1,0 +1,39 @@
+From Brett Cameron on 4/29/2012:
+
+Alan,
+
+The attached compressed tarball contains the files that I've changed
+plus a couple of simple examples.
+
+If you search the .c and .h files for "WITH_OPENSSL" you will easily be
+able to follow what I've done and it should be straightforward for you
+to incorporate the changes. I've pulled this together quite quickly
+using some old bits of code I had lying around, and I'm guessing that
+you will at least want to reformat things a bit. You might also want to
+tweak how I've done the error handling.
+
+Obviously you need to compile with -DWITH_OPENSSL to pull in the SSL
+stuff. What I'd envisaged is that we would end up with two libraries -
+something like librabbitmq.so and librabbitmq-ssl.so, etc. I've not yet
+had time to mess with the makefile(s) to make this a reality, but it
+shouldn't be too tricky.
+
+The examples are basically just SSL-ized versions of the amqp_producer.c
+and amqp_consumer.c examples. Obviously you could achieve the same
+result by including appropriate preprocessor directives in
+amqp_producer.c and amqp_consumer.c. Note that the call to
+amqp_ssl_init() is not strictly necessary, as it will be called by
+amqp_ssl_context() if required.
+
+Along with the examples I've also provided a key file client.pem that is
+a concatenation of the key.pem, cert.pem, and and cacert.pem files (in
+that order) (in other words, the way I've implemented the SSL stuff is
+such that it expects your client keys, certificate, and CA certificate
+to all be in the same file... a quite common approach). You can test the
+examples using client.pem against my broker running on HP Cloud at
+[REDACTED]:5671.
+
+Let me know if you need anything more.
+
+Regards,
+Brett
