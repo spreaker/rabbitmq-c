@@ -104,15 +104,15 @@ int amqp_get_sockfd(amqp_connection_state_t state) {
 }
 
 void amqp_set_sockfd(amqp_connection_state_t state,
-		     int sockfd)
+         int sockfd)
 {
   state->sockfd = sockfd;
 }
 
 int amqp_tune_connection(amqp_connection_state_t state,
-			 int channel_max,
-			 int frame_max,
-			 int heartbeat)
+       int channel_max,
+       int frame_max,
+       int heartbeat)
 {
   void *newbuf;
 
@@ -164,7 +164,7 @@ static void return_to_idle(amqp_connection_state_t state) {
 }
 
 static size_t consume_data(amqp_connection_state_t state,
-			   amqp_bytes_t *received_data)
+         amqp_bytes_t *received_data)
 {
   /* how much data is available and will fit? */
   size_t bytes_consumed = state->target_size - state->inbound_offset;
@@ -172,7 +172,7 @@ static size_t consume_data(amqp_connection_state_t state,
     bytes_consumed = received_data->len;
 
   memcpy(amqp_offset(state->inbound_buffer.bytes, state->inbound_offset),
-	 received_data->bytes, bytes_consumed);
+   received_data->bytes, bytes_consumed);
   state->inbound_offset += bytes_consumed;
   received_data->bytes = amqp_offset(received_data->bytes, bytes_consumed);
   received_data->len -= bytes_consumed;
@@ -181,8 +181,8 @@ static size_t consume_data(amqp_connection_state_t state,
 }
 
 int amqp_handle_input(amqp_connection_state_t state,
-		      amqp_bytes_t received_data,
-		      amqp_frame_t *decoded_frame)
+          amqp_bytes_t received_data,
+          amqp_frame_t *decoded_frame)
 {
   size_t bytes_consumed;
   void *raw_frame;
@@ -196,11 +196,11 @@ int amqp_handle_input(amqp_connection_state_t state,
 
   if (state->state == CONNECTION_STATE_IDLE) {
     state->inbound_buffer.bytes = amqp_pool_alloc(&state->frame_pool,
-						  state->inbound_buffer.len);
+              state->inbound_buffer.len);
     if (state->inbound_buffer.bytes == NULL)
       /* state->inbound_buffer.len is always nonzero, because it
-	 corresponds to frame_max, which is not permitted to be less
-	 than AMQP_FRAME_MIN_SIZE (currently 4096 bytes). */
+   corresponds to frame_max, which is not permitted to be less
+   than AMQP_FRAME_MIN_SIZE (currently 4096 bytes). */
       return -ERROR_NO_MEMORY;
 
     state->state = CONNECTION_STATE_HEADER;
@@ -271,10 +271,10 @@ int amqp_handle_input(amqp_connection_state_t state,
       encoded.len = state->target_size - HEADER_SIZE - 4 - FOOTER_SIZE;
 
       res = amqp_decode_method(decoded_frame->payload.method.id,
-			       &state->decoding_pool, encoded,
-			       &decoded_frame->payload.method.decoded);
+             &state->decoding_pool, encoded,
+             &decoded_frame->payload.method.decoded);
       if (res < 0)
-	return res;
+  return res;
 
       break;
 
@@ -343,7 +343,7 @@ void amqp_maybe_release_buffers(amqp_connection_state_t state) {
 }
 
 int amqp_send_frame(amqp_connection_state_t state,
-		    const amqp_frame_t *frame)
+        const amqp_frame_t *frame)
 {
   void *out_frame = state->outbound_buffer.bytes;
   int res;
@@ -423,7 +423,7 @@ int amqp_send_frame(amqp_connection_state_t state,
     res = amqp_ssl_send(state, out_frame, out_frame_len + HEADER_SIZE + FOOTER_SIZE);
 #else
     res = send(state->sockfd, out_frame,
-               out_frame_len + HEADER_SIZE + FOOTER_SIZE, 0);
+        out_frame_len + HEADER_SIZE + FOOTER_SIZE, 0);
 #endif
   }
 

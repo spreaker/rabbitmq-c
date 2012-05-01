@@ -33,15 +33,9 @@
  * ***** END LICENSE BLOCK *****
  */
 
-#if defined(__VMS) && defined(WITH_OPENSSL)
-#ifndef IFNAMSIZ
-#define IFNAMSIZ 16
-#endif
-#endif
-
 #include "config.h"
 
-#ifdef WITH_OPENSSL		/* BRC */
+#ifdef WITH_OPENSSL   /* BRC */
 #include <fcntl.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
@@ -164,20 +158,20 @@ static inline void *amqp_offset(void *data, size_t offset)
                                                                             \
 static inline void amqp_e##bits(void *data, size_t offset,                  \
                                 uint##bits##_t val)                         \
-{									    \
+{                     \
   /* The AMQP data might be unaligned. So we encode and then copy the       \
-     result into place. */		   				    \
-  uint##bits##_t res = htonx(val);	   				    \
+     result into place. */                  \
+  uint##bits##_t res = htonx(val);                \
   memcpy(amqp_offset(data, offset), &res, bits/8);                          \
 }                                                                           \
                                                                             \
 static inline uint##bits##_t amqp_d##bits(void *data, size_t offset)        \
-{			      		   				    \
-  /* The AMQP data might be unaligned.  So we copy the source value	    \
-     into a variable and then decode it. */				    \
-  uint##bits##_t val;	      						    \
+{                             \
+  /* The AMQP data might be unaligned.  So we copy the source value     \
+     into a variable and then decode it. */           \
+  uint##bits##_t val;                       \
   memcpy(&val, amqp_offset(data, offset), bits/8);                          \
-  return ntohx(val);							    \
+  return ntohx(val);                  \
 }                                                                           \
                                                                             \
 static inline int amqp_encode_##bits(amqp_bytes_t encoded, size_t *offset,  \
@@ -251,7 +245,7 @@ DECLARE_CODEC_BASE_TYPE(32, htonl, ntohl)
 DECLARE_CODEC_BASE_TYPE(64, htonll, ntohll)
 
 static inline int amqp_encode_bytes(amqp_bytes_t encoded, size_t *offset,
-				    amqp_bytes_t input)
+            amqp_bytes_t input)
 {
   size_t o = *offset;
   if ((*offset = o + input.len) <= encoded.len) {
@@ -264,7 +258,7 @@ static inline int amqp_encode_bytes(amqp_bytes_t encoded, size_t *offset,
 }
 
 static inline int amqp_decode_bytes(amqp_bytes_t encoded, size_t *offset,
-				    amqp_bytes_t *output, size_t len)
+            amqp_bytes_t *output, size_t len)
 {
   size_t o = *offset;
   if ((*offset = o + len) <= encoded.len) {
