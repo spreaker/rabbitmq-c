@@ -597,14 +597,14 @@ int amqp_ssl_send(amqp_connection_state_t state, char *buf, size_t nb)
 
 int amqp_ssl_writev(amqp_connection_state_t state, const struct iovec *vec, int num)
 {
-  char *        buffer;
-  char *        bp;
+  char *    buffer;
+  char *    bp;
 
-  int         total;
-  int         chunk;
+  size_t    total;
+  size_t    chunk;
 
-  int         n;
-  int         i;
+  size_t    n;
+  int       i;
 
 
   total = 0;
@@ -628,12 +628,13 @@ int amqp_ssl_writev(amqp_connection_state_t state, const struct iovec *vec, int 
   }
 
 
-  n = total; bp = buffer;
+  n = total;
+  bp = buffer;
 
   for (i = 0; i < num; i++)
   {
     chunk = MIN(vec[i].iov_len, n); 
-    bp = mempcpy(bp, vec[i].iov_base, chunk);
+    bp = (memcpy(bp, vec[i].iov_base, chunk) + chunk);
 
     n -= chunk;
 
