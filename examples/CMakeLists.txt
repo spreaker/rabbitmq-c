@@ -35,3 +35,13 @@ target_link_libraries(amqp_bind rabbitmq)
 
 add_executable(amqp_listenq amqp_listenq.c ${COMMON_SRCS})
 target_link_libraries(amqp_listenq rabbitmq)
+
+if (ENABLE_SSL_SUPPORT)
+  configure_file(client.pem ${CMAKE_CURRENT_BINARY_DIR}/client.pem COPYONLY)
+
+  add_executable(amqp_ssl_producer amqp_ssl_producer.c ${COMMON_SRCS})
+  target_link_libraries(amqp_ssl_producer rabbitmq)
+
+  add_executable(amqp_ssl_consumer amqp_ssl_consumer.c ${COMMON_SRCS})
+  target_link_libraries(amqp_ssl_consumer rabbitmq)
+endif (ENABLE_SSL_SUPPORT)

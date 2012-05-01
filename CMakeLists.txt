@@ -65,6 +65,14 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
 find_package(POPT)
 
+option(ENABLE_SSL_SUPPORT "Enable support for connecting to a broker using SSL/TLS" OFF)
+
+if (ENABLE_SSL_SUPPORT)
+    find_package(OpenSSL REQUIRED)
+    include_directories(${OPENSSL_INCLUDE_DIR})
+    add_definitions(-DWITH_OPENSSL)
+endif (ENABLE_SSL_SUPPORT)
+
 add_subdirectory(librabbitmq)
 add_subdirectory(examples)
 

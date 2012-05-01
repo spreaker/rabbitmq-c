@@ -85,6 +85,10 @@ if(WIN32)
   target_link_libraries(rabbitmq ws2_32)
 endif(WIN32)
 
+if (ENABLE_SSL_SUPPORT)
+    target_link_libraries(rabbitmq ${OPENSSL_LIBRARIES})
+endif(ENABLE_SSL_SUPPORT)
+
 install(TARGETS rabbitmq
 	RUNTIME DESTINATION bin
 	LIBRARY DESTINATION lib
