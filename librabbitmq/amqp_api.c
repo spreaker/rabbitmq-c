@@ -244,7 +244,7 @@ int amqp_basic_reject(amqp_connection_state_t state,
 
 /* ------------------------------------------------------------------------------------------------------------------------------------ */
 
-#ifdef WITH_OPENSSL
+#ifdef AMQP_WITH_SSL
 #include <signal.h>
 #include <limits.h>
 
@@ -658,10 +658,10 @@ RABBITMQ_EXPORT amqp_boolean_t amqp_has_feature(int feature)
 {
   switch (feature)
   {
-#ifdef AMQP_WITH_OPENSSL
+#ifdef AMQP_WITH_SSL
     case AMQP_FEATURE_SSL:
       return 1;
-#endif /* AMQP_WITH_OPENSSL */
+#endif /* AMQP_AMQP_WITH_SSL */
 #ifdef AMQP_WITH_THREADSAFE
     case AMQP_FEATURE_THREADSAFE:
       return 1;

@@ -82,7 +82,7 @@ amqp_connection_state_t amqp_new_connection(void) {
   if (state->sock_inbound_buffer.bytes == NULL)
     goto out_nomem;
 
-#ifdef WITH_OPENSSL
+#ifdef AMQP_WITH_SSL
   state->ssl = NULL;
   state->bio = NULL;
   state->ctx = NULL;
@@ -367,7 +367,7 @@ int amqp_send_frame(amqp_connection_state_t state,
     iov[2].iov_base = &frame_end_byte;
     iov[2].iov_len = FOOTER_SIZE;
 
-#ifdef WITH_OPENSSL
+#ifdef AMQP_WITH_SSL
     res = amqp_ssl_writev(state, iov, 3);
 #else
     res = amqp_socket_writev(state->sockfd, iov, 3);
@@ -419,7 +419,7 @@ int amqp_send_frame(amqp_connection_state_t state,
     amqp_e32(out_frame, 3, out_frame_len);
     amqp_e8(out_frame, out_frame_len + HEADER_SIZE, AMQP_FRAME_END);
 
-#ifdef WITH_OPENSSL
+#ifdef AMQP_WITH_SSL
     res = amqp_ssl_send(state, out_frame, out_frame_len + HEADER_SIZE + FOOTER_SIZE);
 #else
     res = send(state->sockfd, out_frame,

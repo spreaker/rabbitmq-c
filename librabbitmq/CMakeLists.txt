@@ -42,6 +42,8 @@ SET(CONFIG_CONTENTS "#define VERSION \"0.2\"
 #prepare config.h
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/config.h" ${CONFIG_CONTENTS})
 
+configure_file(amqp_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/amqp_config.h)
+
 if(WIN32)
   set(SOCKET_IMPL "windows")
 else(WIN32)
@@ -96,6 +98,7 @@ install(TARGETS rabbitmq
 	PUBLIC_HEADER DESTINATION include)
 
 install(FILES amqp.h ${CMAKE_CURRENT_BINARY_DIR}/amqp_framing.h ${STDINT_H_INSTALL_FILE}
+  ${CMAKE_CURRENT_BINARY_DIR}/amqp_config.h
 	DESTINATION include)
 
 

@@ -70,8 +70,17 @@ option(ENABLE_SSL_SUPPORT "Enable support for connecting to a broker using SSL/T
 if (ENABLE_SSL_SUPPORT)
     find_package(OpenSSL REQUIRED)
     include_directories(${OPENSSL_INCLUDE_DIR})
-    add_definitions(-DWITH_OPENSSL)
+    set(AMQP_WITH_SSL 1)
 endif (ENABLE_SSL_SUPPORT)
+
+option(ENABLE_THREADSAFE "Enables using the library in a threaded context" ON)
+
+if (ENABLE_THREADSAFE)
+  set(AMQP_WITH_THREADSAFE 1)
+  set(CMAKE_THREAD_PREFER_PTHREAD 1)
+
+  find_package(Threads REQUIRED)
+endif (ENABLE_THREADSAFE)
 
 add_subdirectory(librabbitmq)
 add_subdirectory(examples)

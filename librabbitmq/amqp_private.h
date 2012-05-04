@@ -35,7 +35,7 @@
 
 #include "config.h"
 
-#ifdef WITH_OPENSSL   /* BRC */
+#ifdef AMQP_WITH_SSL   /* BRC */
 #include <fcntl.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
@@ -137,7 +137,7 @@ struct amqp_connection_state_t_ {
 
   amqp_rpc_reply_t most_recent_api_result;
 
-#ifdef WITH_OPENSSL
+#ifdef AMQP_WITH_SSL
   unsigned short ssl_flags;
   SSL *ssl;
   BIO *bio;
@@ -273,7 +273,7 @@ static inline int amqp_decode_bytes(amqp_bytes_t encoded, size_t *offset,
 
 extern void amqp_abort(const char *fmt, ...);
 
-#ifdef WITH_OPENSSL
+#ifdef AMQP_WITH_SSL
 extern int amqp_ssl_send(amqp_connection_state_t conn, char *data, size_t len);
 extern int amqp_ssl_recv(amqp_connection_state_t conn, char *data, size_t len);
 extern int amqp_ssl_writev(amqp_connection_state_t conn, const struct iovec *vector, int count);

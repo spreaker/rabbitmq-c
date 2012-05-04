@@ -36,6 +36,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include <amqp_config.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -406,7 +408,7 @@ RABBITMQ_EXPORT void amqp_default_connection_info(
 RABBITMQ_EXPORT int amqp_parse_url(char *url,
 				   struct amqp_connection_info *parsed);
 
-#ifdef WITH_OPENSSL
+#ifdef AMQP_WITH_SSL
 #define AMQP_SSL_NO_AUTHENTICATION              0x00    /* for testing purposes */
 #define AMQP_SSL_REQUIRE_SERVER_AUTHENTICATION  0x01    /* client requires server to authenticate */
 #define AMQP_SSL_SKIP_HOST_CHECK                0x02    /* client does not check the common name of the host in certificate */
