@@ -417,6 +417,11 @@ RABBITMQ_EXPORT int amqp_ssl_connect(amqp_connection_state_t conn, const char *h
 RABBITMQ_EXPORT char *amqp_ssl_error(amqp_connection_state_t conn);
 #endif
 
+#define AMQP_FEATURE_SSL                      0x01
+#define AMQP_FEATURE_THREADSAFE               0x02
+
+RABBITMQ_EXPORT amqp_boolean_t amqp_has_feature(int feature);
+
 #ifdef __cplusplus
 }
 #endif

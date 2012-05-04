@@ -654,5 +654,21 @@ int amqp_ssl_writev(amqp_connection_state_t state, const struct iovec *vec, int 
 
 #endif
 
+RABBITMQ_EXPORT amqp_boolean_t amqp_has_feature(int feature)
+{
+  switch (feature)
+  {
+#ifdef AMQP_WITH_OPENSSL
+    case AMQP_FEATURE_SSL:
+      return 1;
+#endif /* AMQP_WITH_OPENSSL */
+#ifdef AMQP_WITH_THREADSAFE
+    case AMQP_FEATURE_THREADSAFE:
+      return 1;
+#endif /* AMQP_WITH_THREADSAFE */
 
+  default:
+    return 0;
+  }
+}
 
