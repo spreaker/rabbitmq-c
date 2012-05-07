@@ -1,0 +1,8 @@
+#ifndef AMQP_CONFIG_H_INCLUDED
+#define AMQP_CONFIG_H_INCLUDED
+
+#cmakedefine AMQP_WITH_SSL
+
+#cmakedefine AMQP_WITH_THREADSAFE
+
+#endif /* AMQP_CONFIG_H_INCLUDED */
