@@ -5,6 +5,8 @@ AM_CFLAGS = -I$(top_srcdir)/librabbitmq -I$(top_builddir)/librabbitmq
 lib_LTLIBRARIES = librabbitmq/librabbitmq.la
 
 librabbitmq_librabbitmq_la_SOURCES = \
+	librabbitmq/amqp-socket.h \
+	librabbitmq/amqp-tcp-socket.c \
 	librabbitmq/amqp_api.c \
 	librabbitmq/amqp_connection.c \
 	librabbitmq/amqp_framing.c \
@@ -56,9 +58,10 @@ endif
 include_HEADERS = \
 	$(top_srcdir)/librabbitmq/amqp.h \
 	$(top_builddir)/librabbitmq/amqp_framing.h
+	$(top_builddir)/librabbitmq/amqp-tcp-socket.h \
 
 if SSL
-include_HEADERS += librabbitmq/amqp-ssl.h
+include_HEADERS += librabbitmq/amqp-ssl-socket.h
 endif
 
 BUILT_SOURCES = \
