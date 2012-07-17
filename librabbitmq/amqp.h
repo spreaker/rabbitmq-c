@@ -1,3 +1,4 @@
+/** @file */
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Version: MIT
@@ -32,6 +33,16 @@
 
 #ifndef AMQP_H
 #define AMQP_H
+
+/**
+ * @def AMQP_BEGIN_DECLS
+ * @internal
+ * Conditionally wrapping the file in an extern "C"
+ *
+ * @def AMQP_END_DECLS
+ * @internal
+ * Conditionally wrapping the file in an extern "C"
+ */
 
 #ifdef __cplusplus
 #define AMQP_BEGIN_DECLS extern "C" {
@@ -293,6 +304,11 @@ typedef enum amqp_sasl_method_enum_ {
 /* Opaque struct. */
 typedef struct amqp_connection_state_t_ *amqp_connection_state_t;
 
+/**
+ * Gets the version of rabbitmq-c
+ *
+ * @return string representation of the library. Statically allocated, does not need to be freed
+ */
 AMQP_PUBLIC_FUNCTION
 char const *
 AMQP_CALL amqp_version(void);

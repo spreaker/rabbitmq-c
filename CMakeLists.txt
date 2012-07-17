@@ -189,6 +189,7 @@ mark_as_advanced(AMQP_CODEGEN_DIR)
 
 find_package(POPT)
 find_package(XmlTo)
+find_package(Doxygen)
 
 if (POPT_FOUND AND XmlTo_FOUND)
   set(DO_DOCS ON)
@@ -201,6 +202,7 @@ option(BUILD_EXAMPLES "Build Examples" ON)
 option(BUILD_TOOLS "Build Tools (requires POPT Library)" ${POPT_FOUND})
 option(BUILD_TOOLS_DOCS "Build man pages for Tools (requires xmlto)" ${DO_DOCS})
 option(BUILD_TESTS "Build tests (run tests with make test)" ON)
+option(BUILD_API_DOCS "Build Doxygen API docs" ${DOXYGEN_FOUND})
 
 if (NOT BUILD_SHARED_LIBS AND NOT BUILD_STATIC_LIBS)
     message(FATAL_ERROR "One or both of BUILD_SHARED_LIBS or BUILD_STATIC_LIBS must be set to ON to build")
@@ -228,6 +230,22 @@ if (BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
 endif (BUILD_TESTS)
+
+if (BUILD_API_DOCS)
+  if (NOT DOXYGEN_FOUND)
+    message(FATAL_ERROR "Doxygen is required to build the API documentation")
+  endif ()
+  configure_file(${CMAKE_SOURCE_DIR}/docs/Doxyfile.in ${CMAKE_BINARY_DIR}/docs/Doxyfile @ONLY)
+
+  add_custom_target(docs
+    COMMAND ${DOXYGEN_EXECUTABLE}
+    VERBATIM
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/docs
+    DEPENDS rabbitmq
+    COMMENT "Generating API documentation"
+    SOURCES ${CMAKE_SOURCE_DIR}/docs/Doxyfile.in
+    )
+endif ()
 
 set(prefix ${CMAKE_INSTALL_PREFIX})
 set(exec_prefix ${CMAKE_INSTALL_PREFIX}/bin)
