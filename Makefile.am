@@ -59,8 +59,8 @@ endif
 
 include_HEADERS = \
 	$(top_srcdir)/librabbitmq/amqp.h \
-	$(top_builddir)/librabbitmq/amqp_framing.h
-	$(top_builddir)/librabbitmq/amqp-tcp-socket.h \
+	$(top_builddir)/librabbitmq/amqp_framing.h \
+	$(top_builddir)/librabbitmq/amqp-tcp-socket.h
 
 if SSL
 include_HEADERS += librabbitmq/amqp-ssl-socket.h
