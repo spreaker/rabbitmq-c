@@ -129,6 +129,21 @@
 AMQP_BEGIN_DECLS
 
 /**
+ * Default frame size
+ */
+#define AMQP_DEFAULT_FRAME_SIZE 131072
+
+/**
+ * Default maximum number of channels.
+ */
+#define AMQP_DEFAULT_MAX_CHANNELS 0
+
+/**
+ * Default heartbeat
+ */
+#define AMQP_DEFAULT_HEARTBEAT 0
+
+/**
  * boolean type
  */
 typedef int amqp_boolean_t;
