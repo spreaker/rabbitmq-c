@@ -42,6 +42,10 @@
 #include <stdarg.h>
 #include <assert.h>
 
+
+static void amqp_void_signal_handler(int signo) {}
+
+
 int amqp_open_socket(char const *hostname,
 		     int portnumber)
 {
@@ -52,6 +56,9 @@ int amqp_open_socket(char const *hostname,
   int sockfd = -1;
   int last_error = 0;
   int one = 1; /* for setsockopt */
+  int five = 5; /* for setsockopt */
+  int ten = 10; /* for setsockopt */
+  int res;
 
   if (0 != (last_error = amqp_socket_init()))
     return last_error;
@@ -90,8 +97,48 @@ int amqp_open_socket(char const *hostname,
       continue;
     }
 #endif /* DISABLE_SIGPIPE_WITH_SETSOCKOPT */
-    if (0 != amqp_socket_setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one))
-        || 0 != connect(sockfd, addr->ai_addr, addr->ai_addrlen))
+
+
+    /* Set TCP Keep-Alive in order to get a timeout after 30sec
+       the socket is in a stalled state */
+#ifdef TCP_KEEPIDLE && TCP_KEEPCNT && TCP_KEEPINTVL
+    /* Linux */
+    if (0 != amqp_socket_setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &one, sizeof(one)) ||
+        0 != amqp_socket_setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPIDLE, &ten, sizeof(ten)) ||
+        0 != amqp_socket_setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPCNT, &five, sizeof(five)) ||
+        0 != amqp_socket_setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPINTVL, &five, sizeof(five)))
+    {
+      last_error = -amqp_socket_error();
+      amqp_socket_close(sockfd);
+      continue;
+    }
+#endif
+#ifdef TCP_KEEPALIVE && !TCP_KEEPIDLE
+    /* Mac */
+    if (0 != amqp_socket_setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &one, sizeof(one)) ||
+        0 != amqp_socket_setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPALIVE, &ten, sizeof(ten)))
+    {
+      last_error = -amqp_socket_error();
+      amqp_socket_close(sockfd);
+      continue;
+    }
+#endif
+
+
+    if (0 != amqp_socket_setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one)))
+    {
+      last_error = -amqp_socket_error();
+      amqp_socket_close(sockfd);
+      continue;
+    }
+
+    /* HACK to implement a 2sec timeout on connect */
+    signal(SIGALRM, amqp_void_signal_handler);
+    alarm(2);
+    res = connect(sockfd, addr->ai_addr, addr->ai_addrlen);
+    alarm(0);
+
+    if (0 != res)
     {
       last_error = -amqp_socket_error();
       amqp_socket_close(sockfd);
@@ -109,7 +156,7 @@ int amqp_open_socket(char const *hostname,
   {
     return last_error;
   }
-  
+
   return sockfd;
 }
 
