@@ -62,6 +62,51 @@ static int amqp_set_sock_non_blocking(int fd)
     return res == -1 ? -1 : 0;
 }
 
+static int amqp_socket_connect(int fd, struct addrinfo *addr)
+{
+    fd_set fdset;
+    struct timeval timeout;
+    int res;
+    socklen_t res_len = sizeof(res);
+
+    /* Configure timeout */
+    timeout.tv_sec = 2;
+    timeout.tv_usec = 0;
+
+    /* Connect */
+    res = connect(fd, addr->ai_addr, addr->ai_addrlen);
+
+// TODO DEBUG
+printf("post connect: %d\n", res);
+
+    if (res == 0) {
+        return 0;
+    } else if (res < 0 && errno != EINPROGRESS) {
+        return -1;
+    }
+
+    /* Wait 2sec for the connect() */
+    FD_ZERO(&fdset);
+    FD_SET(fd, &fdset);
+
+// TODO DEBUG
+printf("before select\n");
+
+    if (select(fd + 1, NULL, &fdset, NULL, &timeout) != 1) {
+        return -1;
+    }
+
+// TODO DEBUG
+printf("post select\n");
+
+    /* Check the result of the connect() attempt */
+
+    if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &res, &res_len) < 0) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
 
 
 int amqp_open_socket(char const *hostname,
@@ -76,7 +121,7 @@ int amqp_open_socket(char const *hostname,
   int one = 1; /* for setsockopt */
   int five = 5; /* for setsockopt */
   int ten = 10; /* for setsockopt */
-  int res;
+
 
   if (0 != (last_error = amqp_socket_init()))
     return last_error;
@@ -153,69 +198,25 @@ int amqp_open_socket(char const *hostname,
     /* Sets the socket to non-blocking */
     amqp_set_sock_non_blocking(sockfd);
 
-// TODO DEBUG
-printf("before connect\n");
     /* Connect */
-    res = connect(sockfd, addr->ai_addr, addr->ai_addrlen);
-// TODO DEBUG
-printf("post connect: %d\n", res);
-    if (res < 0 && errno != EINPROGRESS)
+    if (amqp_socket_connect(sockfd, addr) != 0)
     {
-      // TODO in teoria dovrei renderla bloccante qui la socket
+      /* Sets the socket to blocking */
+      amqp_set_sock_blocking(sockfd);
+
       last_error = -amqp_socket_error();
       amqp_socket_close(sockfd);
       continue;
     }
-
-
-    // TODO se res == 0, connection succeeded immediately
-
-    /* Wait 2sec for the connect() */
-    fd_set sock_fdset;
-    FD_ZERO(&sock_fdset);
-    FD_SET(sockfd, &sock_fdset);
-
-    struct timeval sock_wait_timeout;
-    sock_wait_timeout.tv_sec = 2;
-    sock_wait_timeout.tv_usec = 0;
-// TODO DEBUG
-printf("before select\n");
-    if (select(sockfd + 1, NULL, &sock_fdset, NULL, &sock_wait_timeout) != 1)
+    else
     {
-            // TODO TEST
-            int flags = fcntl(sockfd, F_GETFL, 0);
-            printf ("flags pre: %d\n", flags);
+      /* Sets the socket to blocking */
+      amqp_set_sock_blocking(sockfd);
 
-            amqp_set_sock_blocking(sockfd);
-
-            flags = fcntl(sockfd, F_GETFL, 0);
-            printf ("flags post: %d\n", flags);
-            printf ("non blocking flag: %d\n", O_NONBLOCK);
-            printf("post connect() e' non blocking: %d\n", (flags & O_NONBLOCK));
-
-      // TODO in teoria dovrei renderla bloccante qui la socket
-      last_error = -amqp_socket_error();
-      amqp_socket_close(sockfd);
-      continue;
+      last_error = 0;
+      break;
     }
-// TODO DEBUG
-printf("post select\n");
-    /* Check the result of the connect() attempt */
-    socklen_t result_len = sizeof(res);
-    if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &res, &result_len) < 0) {
 
-
-
-      // TODO in teoria dovrei renderla bloccante qui la socket
-      last_error = -amqp_socket_error();
-      amqp_socket_close(sockfd);
-      continue;
-    }
-// TODO DEBUG
-printf("post getsockopt() with res: %d\n", res);
-
-    /* Sets the socket to blocking */
-    amqp_set_sock_blocking(sockfd);
 
 
     /* HACK to implement a 2sec timeout on connect */
@@ -223,7 +224,7 @@ printf("post getsockopt() with res: %d\n", res);
     // alarm(2);
     // res = connect(sockfd, addr->ai_addr, addr->ai_addrlen);
     // alarm(0);
-
+    /*
     if (0 != res)
     {
       last_error = -amqp_socket_error();
@@ -235,6 +236,7 @@ printf("post getsockopt() with res: %d\n", res);
       last_error = 0;
       break;
     }
+    */
   }
 
   freeaddrinfo(address_list);
