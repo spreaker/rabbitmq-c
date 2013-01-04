@@ -42,9 +42,8 @@
 #include <stdarg.h>
 #include <assert.h>
 #include <signal.h>
-
-
-static void amqp_void_signal_handler(int signo) {}
+#include <fcntl.h>
+#include <sys/select.h>
 
 
 int amqp_open_socket(char const *hostname,
@@ -132,11 +131,72 @@ int amqp_open_socket(char const *hostname,
       continue;
     }
 
-    /* HACK to implement a 2sec timeout on connect */
-    signal(SIGALRM, amqp_void_signal_handler);
-    alarm(2);
+// TODO DEBUG
+printf("before non blocking socket\n");
+
+    /* Sets the socket to non-blocking */
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+// TODO DEBUG
+printf("before connect\n");
+    /* Connect */
     res = connect(sockfd, addr->ai_addr, addr->ai_addrlen);
-    alarm(0);
+// TODO DEBUG
+printf("post connect: %d\n", res);
+    if (res < 0 && errno != EINPROGRESS)
+    {
+      // TODO in teoria dovrei renderla bloccante qui la socket
+      last_error = -amqp_socket_error();
+      amqp_socket_close(sockfd);
+      continue;
+    }
+
+
+    // TODO se res == 0, connection succeeded immediately
+
+    /* Wait 2sec for the connect() */
+    fd_set sock_fdset;
+    FD_ZERO(&sock_fdset);
+    FD_SET(sockfd, &sock_fdset);
+
+    struct timeval sock_wait_timeout;
+    sock_wait_timeout.tv_sec = 2;
+    sock_wait_timeout.tv_usec = 0;
+// TODO DEBUG
+printf("before select\n");
+    if (select(sockfd + 1, NULL, &sock_fdset, NULL, &sock_wait_timeout) != 1)
+    {
+      // TODO in teoria dovrei renderla bloccante qui la socket
+      last_error = -amqp_socket_error();
+      amqp_socket_close(sockfd);
+      continue;
+    }
+// TODO DEBUG
+printf("post select\n");
+    /* Check the result of the connect() attempt */
+    socklen_t result_len = sizeof(res);
+    if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &res, &result_len) < 0) {
+      // TODO in teoria dovrei renderla bloccante qui la socket
+      last_error = -amqp_socket_error();
+      amqp_socket_close(sockfd);
+      continue;
+    }
+// TODO DEBUG
+printf("post getsockopt() with res: %d\n", res);
+
+    /* Sets the socket to blocking */
+    fcntl(sockfd, F_SETFL, flags & (~O_NONBLOCK));
+
+    // TODO TEST
+    flags = fcntl(sockfd, F_GETFL, 0);
+    printf("post connect() e' non blocking: %d\n", (flags & O_NONBLOCK));
+
+
+    /* HACK to implement a 2sec timeout on connect */
+    // signal(SIGALRM, amqp_void_signal_handler);
+    // alarm(2);
+    // res = connect(sockfd, addr->ai_addr, addr->ai_addrlen);
+    // alarm(0);
 
     if (0 != res)
     {
