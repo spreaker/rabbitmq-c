@@ -46,6 +46,24 @@
 #include <sys/select.h>
 
 
+static int amqp_set_sock_blocking(int fd)
+{
+    int flags = fcntl(fd, F_GETFL, 0);
+    int res   = fcntl(fd, F_SETFL, flags & (~O_NONBLOCK));
+
+    return res == -1 ? -1 : 0;
+}
+
+static int amqp_set_sock_non_blocking(int fd)
+{
+    int flags = fcntl(fd, F_GETFL, 0);
+    int res   = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+
+    return res == -1 ? -1 : 0;
+}
+
+
+
 int amqp_open_socket(char const *hostname,
              int portnumber)
 {
@@ -131,12 +149,10 @@ int amqp_open_socket(char const *hostname,
       continue;
     }
 
-// TODO DEBUG
-printf("before non blocking socket\n");
 
     /* Sets the socket to non-blocking */
-    int flags = fcntl(sockfd, F_GETFL, 0);
-    fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+    amqp_set_sock_non_blocking(sockfd);
+
 // TODO DEBUG
 printf("before connect\n");
     /* Connect */
@@ -167,9 +183,11 @@ printf("before select\n");
     if (select(sockfd + 1, NULL, &sock_fdset, NULL, &sock_wait_timeout) != 1)
     {
             // TODO TEST
-            flags = fcntl(sockfd, F_GETFL, 0);
+            int flags = fcntl(sockfd, F_GETFL, 0);
             printf ("flags pre: %d\n", flags);
-            fcntl(sockfd, F_SETFL, flags & (~O_NONBLOCK));
+
+            amqp_set_sock_blocking(sockfd);
+
             flags = fcntl(sockfd, F_GETFL, 0);
             printf ("flags post: %d\n", flags);
             printf ("non blocking flag: %d\n", O_NONBLOCK);
@@ -197,11 +215,7 @@ printf("post select\n");
 printf("post getsockopt() with res: %d\n", res);
 
     /* Sets the socket to blocking */
-    fcntl(sockfd, F_SETFL, flags & (~O_NONBLOCK));
-
-    // TODO TEST
-    flags = fcntl(sockfd, F_GETFL, 0);
-    printf("post connect() e' non blocking: %d\n", (flags & O_NONBLOCK));
+    amqp_set_sock_blocking(sockfd);
 
 
     /* HACK to implement a 2sec timeout on connect */
