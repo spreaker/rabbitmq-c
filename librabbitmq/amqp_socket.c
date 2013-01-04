@@ -167,6 +167,7 @@ printf("before select\n");
     if (select(sockfd + 1, NULL, &sock_fdset, NULL, &sock_wait_timeout) != 1)
     {
             // TODO TEST
+            flags = fcntl(sockfd, F_GETFL, 0);
             printf ("flags pre: %d\n", flags);
             fcntl(sockfd, F_SETFL, flags & (~O_NONBLOCK));
             flags = fcntl(sockfd, F_GETFL, 0);
