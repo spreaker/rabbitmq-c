@@ -41,6 +41,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <assert.h>
+#include <signal.h>
 
 
 static void amqp_void_signal_handler(int signo) {}
