@@ -166,6 +166,13 @@ printf("post connect: %d\n", res);
 printf("before select\n");
     if (select(sockfd + 1, NULL, &sock_fdset, NULL, &sock_wait_timeout) != 1)
     {
+            // TODO TEST
+            printf ("flags pre: %d\n", flags);
+            fcntl(sockfd, F_SETFL, flags & (~O_NONBLOCK));
+            flags = fcntl(sockfd, F_GETFL, 0);
+            printf ("flags post: %d\n", flags);
+            printf("post connect() e' non blocking: %d\n", (flags & O_NONBLOCK));
+
       // TODO in teoria dovrei renderla bloccante qui la socket
       last_error = -amqp_socket_error();
       amqp_socket_close(sockfd);
@@ -177,12 +184,7 @@ printf("post select\n");
     socklen_t result_len = sizeof(res);
     if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &res, &result_len) < 0) {
 
-            // TODO TEST
-            printf ("flags pre: %d\n", flags);
-            fcntl(sockfd, F_SETFL, flags & (~O_NONBLOCK));
-            flags = fcntl(sockfd, F_GETFL, 0);
-            printf ("flags post: %d\n", flags);
-            printf("post connect() e' non blocking: %d\n", (flags & O_NONBLOCK));
+
 
       // TODO in teoria dovrei renderla bloccante qui la socket
       last_error = -amqp_socket_error();
