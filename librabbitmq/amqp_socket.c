@@ -76,9 +76,6 @@ static int amqp_socket_connect(int fd, struct addrinfo *addr)
     /* Connect */
     res = connect(fd, addr->ai_addr, addr->ai_addrlen);
 
-// TODO DEBUG
-printf("post connect: %d\n", res);
-
     if (res == 0) {
         return 0;
     } else if (res < 0 && errno != EINPROGRESS) {
@@ -89,15 +86,9 @@ printf("post connect: %d\n", res);
     FD_ZERO(&fdset);
     FD_SET(fd, &fdset);
 
-// TODO DEBUG
-printf("before select\n");
-
-    if (select(fd + 1, NULL, &fdset, &fdset, &timeout) != 1) {
+    if (select(fd + 1, NULL, &fdset, NULL, &timeout) != 1) {
         return -1;
     }
-
-// TODO DEBUG
-printf("post select\n");
 
     /* Check the result of the connect() attempt */
     if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &res, &res_len) < 0) {
