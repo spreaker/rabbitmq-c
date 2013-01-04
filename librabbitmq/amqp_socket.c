@@ -92,7 +92,7 @@ printf("post connect: %d\n", res);
 // TODO DEBUG
 printf("before select\n");
 
-    if (select(fd + 1, NULL, &fdset, NULL, &timeout) != 1) {
+    if (select(fd + 1, NULL, &fdset, &fdset, &timeout) != 1) {
         return -1;
     }
 
@@ -100,7 +100,6 @@ printf("before select\n");
 printf("post select\n");
 
     /* Check the result of the connect() attempt */
-
     if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &res, &res_len) < 0) {
         return -1;
     } else {
@@ -216,27 +215,6 @@ int amqp_open_socket(char const *hostname,
       last_error = 0;
       break;
     }
-
-
-
-    /* HACK to implement a 2sec timeout on connect */
-    // signal(SIGALRM, amqp_void_signal_handler);
-    // alarm(2);
-    // res = connect(sockfd, addr->ai_addr, addr->ai_addrlen);
-    // alarm(0);
-    /*
-    if (0 != res)
-    {
-      last_error = -amqp_socket_error();
-      amqp_socket_close(sockfd);
-      continue;
-    }
-    else
-    {
-      last_error = 0;
-      break;
-    }
-    */
   }
 
   freeaddrinfo(address_list);
