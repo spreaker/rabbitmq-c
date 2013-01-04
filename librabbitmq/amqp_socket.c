@@ -172,6 +172,7 @@ printf("before select\n");
             fcntl(sockfd, F_SETFL, flags & (~O_NONBLOCK));
             flags = fcntl(sockfd, F_GETFL, 0);
             printf ("flags post: %d\n", flags);
+            printf ("non blocking flag: %d\n", O_NONBLOCK);
             printf("post connect() e' non blocking: %d\n", (flags & O_NONBLOCK));
 
       // TODO in teoria dovrei renderla bloccante qui la socket
